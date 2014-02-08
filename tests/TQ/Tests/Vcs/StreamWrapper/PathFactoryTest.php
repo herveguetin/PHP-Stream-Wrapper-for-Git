@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,10 +21,9 @@
  * THE SOFTWARE.
  */
 
-namespace TQ\Tests\Git\StreamWrapper;
+namespace TQ\Tests\Vcs\StreamWrapper;
 
-use TQ\Git\Cli\Binary;
-use TQ\Git\StreamWrapper\PathFactory;
+use TQ\Vcs\StreamWrapper\PathFactoryInterface;
 
 class PathFactoryTest extends \PHPUnit_Framework_TestCase
 {
@@ -36,7 +35,12 @@ class PathFactoryTest extends \PHPUnit_Framework_TestCase
      */
     public function testParsePath($path, array $expected)
     {
-        $factory    = new PathFactory('git', new Binary(GIT_BINARY));
+        /** @var $factory PathFactoryInterface */
+        $factory    = $this->getMockForAbstractClass(
+            'TQ\Vcs\StreamWrapper\AbstractPathFactory',
+            array('protocol')
+        );
+
         $actual     = $factory->parsePath($path);
         $this->assertEquals($expected, $actual);
     }
@@ -48,37 +52,45 @@ class PathFactoryTest extends \PHPUnit_Framework_TestCase
     {
         return array(
             array(
-                'git:///path/to/file',
+                'protocol:///path/to/file',
                 array(
-                    'scheme' => 'git',
+                    'scheme' => 'protocol',
                     'host'   => '__global__',
                     'path'   => '/path/to/file'
                 )
             ),
             array(
-                'git:///path/to/file#HEAD^',
+                'protocol:///path/to/file#HEAD^',
                 array(
-                    'scheme'   => 'git',
+                    'scheme'   => 'protocol',
                     'host'     => '__global__',
                     'path'     => '/path/to/file',
                     'fragment' => 'HEAD^'
                 )
             ),
             array(
-                'git:///path/to/file?commit',
+                'protocol:///path/to/file?commit',
                 array(
-                    'scheme' => 'git',
+                    'scheme' => 'protocol',
                     'host'   => '__global__',
                     'path'   => '/path/to/file',
                     'query'  => 'commit'
                 )
             ),
             array(
-                'git:///C:\path\to\file',
+                'protocol:///C:\path\to\file',
                 array(
-                    'scheme' => 'git',
+                    'scheme' => 'protocol',
                     'host'   => '__global__',
                     'path'   => 'C:/path/to/file'
+                )
+            ),
+            array(
+                'protocol://repo1/path/to/file',
+                array(
+                    'scheme' => 'protocol',
+                    'host'   => 'repo1',
+                    'path'   => '/path/to/file'
                 )
             ),
         );

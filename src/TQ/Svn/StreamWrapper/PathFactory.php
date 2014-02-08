@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,47 +25,57 @@
  * Git Stream Wrapper for PHP
  *
  * @category   TQ
- * @package    TQ_Git
- * @subpackage StreamWrapper
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage SVN
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 
-/**
- * @namespace
- */
-namespace TQ\Vcs\StreamWrapper;
+namespace TQ\Svn\StreamWrapper;
+use TQ\Svn\Cli\Binary;
+use TQ\Svn\Repository\Repository;
+use TQ\Vcs\Repository\RepositoryInterface;
+use TQ\Vcs\StreamWrapper\AbstractPathFactory;
+use TQ\Vcs\StreamWrapper\RepositoryRegistry;
 
 /**
  * Creates path information for a given stream URL
  *
  * @author     Stefan Gehrig <gehrigteqneers.de>
  * @category   TQ
- * @package    TQ_Git
- * @subpackage StreamWrapper
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage SVN
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
-interface PathFactory
+class PathFactory extends AbstractPathFactory
 {
     /**
-     * Returns the repository registry
+     * The SVN binary
      *
-     * @return  RepositoryRegistry
+     * @var Binary
      */
-    public function getRegistry();
+    protected $svn;
 
     /**
-     * Returns the path information for a given stream URL
+     * Creates a path factory
      *
-     * @param   string  $streamUrl      The URL given to the stream function
-     * @return  PathInformation         The path information representing the stream URL
+     * @param   string              $protocol    The protocol (such as "svn")
+     * @param   Binary|string|null  $svn         The SVN binary
+     * @param   RepositoryRegistry  $map         The repository registry
      */
-    public function createPathInformation($streamUrl);
+    public function __construct($protocol, $svn = null, RepositoryRegistry $map = null)
+    {
+        parent::__construct($protocol, $map);
+        $this->svn   = Binary::ensure($svn);
+    }
 
     /**
-     * Returns path information for a given stream path
+     * Creates a new Repository instance for the given path
      *
-     * @param   string      $streamUrl      The URL given to the stream function
-     * @return  array                       An array containing information about the path
+     * @param   string      $path       The path
+     * @return  RepositoryInterface
      */
-    public function parsePath($streamUrl);
+    protected function createRepositoryForPath($path)
+    {
+        return Repository::open($path, $this->svn);
+    }
 }

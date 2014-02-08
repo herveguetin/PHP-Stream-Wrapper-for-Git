@@ -165,15 +165,18 @@ Requirements
 ------------
 
 - PHP > 5.3.0
+- [Composer](https://getcomposer.org) available to include the dependencies
 - Git installed on the machine running the PHP code
+- SVN installed on the machine running the PHP code if you want to use the SVN component
 
 Run tests
 ---------
 
 1. clone the repository
-2. copy `phpunit.xml.dist` to `phpunit.xml`
-3. adjust the `GIT_BINARY`, `SVN_BINARY` and 'SVN_ADMIN_BINARY` constants in `phpunit.xml` to the path to your Git binary
-4. run `phpunit` from within the cloned project folder
+2. run `composer install` to install dependencies and create the autoloader
+3. copy `phpunit.xml.dist` to `phpunit.xml`
+4. adjust the `GIT_BINARY`, `SVN_BINARY` and 'SVN_ADMIN_BINARY` constants in `phpunit.xml` to the path to your Git binary
+5. run `phpunit` from within the cloned project folder
 
 Please note that the library has been tested on a Mac OS X 10.7 with the bundled PHP 5.3.6 (git version 1.7.6), on several Ubuntu Linux installations and on Windows Vista running PHP 5.3.7 (1.7.6.msysgit.0). Due to currently unknown reasons the test run a bit unstable on Windows. All tests should be *green* but during cleanup there may be the possibility that some access restrictions randomly kick in and prevent the cleanup code from removing the test directories.
 
@@ -187,7 +190,7 @@ Please feel free to use the Git issue tracking to report back any problems or er
 License
 -------
 
-Copyright (C) 2011 by TEQneers GmbH & Co. KG
+Copyright (C) 2014 by TEQneers GmbH & Co. KG
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

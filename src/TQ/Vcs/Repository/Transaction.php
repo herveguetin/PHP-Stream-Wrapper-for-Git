@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,11 @@
  * Git Stream Wrapper for PHP
  *
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Repository
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 
-/**
- * @namespace
- */
 namespace TQ\Vcs\Repository;
 
 /**
@@ -40,16 +37,16 @@ namespace TQ\Vcs\Repository;
  *
  * @author     Stefan Gehrig <gehrigteqneers.de>
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Repository
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 class Transaction
 {
     /**
-     * The Vcs repository
+     * The VCS repository
      *
-     * @var Repository
+     * @var RepositoryInterface
      */
     protected $repository;
 
@@ -84,17 +81,17 @@ class Transaction
     /**
      * Creates a new transactional parameter
      *
-     * @param   Repository  $repository     The Vcs repository
+     * @param   RepositoryInterface  $repository     The VCS repository
      */
-    public function __construct(Repository $repository)
+    public function __construct(RepositoryInterface $repository)
     {
         $this->repository   = $repository;
     }
 
     /**
-     * Returns the Vcs repository
+     * Returns the VCS repository
      *
-     * @return  Repository
+     * @return  RepositoryInterface
      */
     public function getRepository()
     {
@@ -102,7 +99,7 @@ class Transaction
     }
 
     /**
-     * Returns the full file system path to the Vcs repository
+     * Returns the full file system path to the VCS repository
      *
      * @return  string
      */

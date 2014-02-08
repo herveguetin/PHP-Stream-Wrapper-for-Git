@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,38 +25,36 @@
  * Git Stream Wrapper for PHP
  *
  * @category   TQ
- * @package    TQ_Git
- * @subpackage StreamWrapper
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 
-/**
- * @namespace
- */
-namespace TQ\Git\StreamWrapper\FileBuffer\Factory;
-use TQ\Vcs\Buffer\FileBuffer;
-use TQ\Git\StreamWrapper\PathInformation;
+namespace TQ\Vcs\StreamWrapper\FileBuffer\Factory;
+use TQ\Vcs\Buffer\FileBufferInterface;
+use TQ\Vcs\StreamWrapper\FileBuffer\FactoryInterface;
 use TQ\Vcs\Buffer\StringBuffer;
+use TQ\Vcs\StreamWrapper\PathInformationInterface;
 
 /**
  * Factory to create a default buffer
  *
  * @author     Stefan Gehrig <gehrigteqneers.de>
  * @category   TQ
- * @package    TQ_Git
- * @subpackage StreamWrapper
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
-class DefaultFactory implements Factory
+class DefaultFactory implements FactoryInterface
 {
     /**
      * Returns true if this factory can handle the requested path
      *
-     * @param   PathInformation     $path   The path information
-     * @param   string              $mode   The mode used to open the file
-     * @return  boolean                     True if this factory can handle the path
+     * @param   PathInformationInterface     $path   The path information
+     * @param   string                       $mode   The mode used to open the file
+     * @return  boolean                              True if this factory can handle the path
      */
-    public function canHandle(PathInformation $path, $mode)
+    public function canHandle(PathInformationInterface $path, $mode)
     {
         return true;
     }
@@ -64,11 +62,11 @@ class DefaultFactory implements Factory
     /**
      * Returns the file stream to handle the requested path
      *
-     * @param   PathInformation     $path   The path information
-     * @param   string              $mode   The mode used to open the path
-     * @return  FileBuffer                  The file buffer to handle the path
+     * @param   PathInformationInterface     $path   The path information
+     * @param   string                       $mode   The mode used to open the path
+     * @return  FileBufferInterface                  The file buffer to handle the path
      */
-    public function createFileBuffer(PathInformation $path, $mode)
+    public function createFileBuffer(PathInformationInterface $path, $mode)
     {
         $repo       = $path->getRepository();
         $buffer     = $repo->showFile($path->getLocalPath(), $path->getRef());

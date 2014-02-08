@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,11 @@
  * Git Stream Wrapper for PHP
  *
  * @category   TQ
- * @package    TQ_Git
- * @subpackage StreamWrapper
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 
-/**
- * @namespace
- */
 namespace TQ\Vcs\Buffer;
 
 /**
@@ -40,25 +37,25 @@ namespace TQ\Vcs\Buffer;
  *
  * @author     Stefan Gehrig <gehrigteqneers.de>
  * @category   TQ
- * @package    TQ_Git
- * @subpackage StreamWrapper
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
-interface FileBuffer
+interface FileBufferInterface
 {
     /**
      * Returns the complete contents of the buffer
      *
      * @return  string
      */
-    function getBuffer();
+    public function getBuffer();
 
     /**
      * Returns true if the pointer is at the end of the buffer
      *
      * @return  boolean
      */
-    function isEof();
+    public function isEof();
 
     /**
      * Reads $count bytes from the buffer
@@ -66,7 +63,7 @@ interface FileBuffer
      * @param   integer     $count      The number of bytes to read
      * @return  string|null
      */
-    function read($count);
+    public function read($count);
 
     /**
      * Writes the given date into the buffer at the current pointer position
@@ -74,14 +71,14 @@ interface FileBuffer
      * @param   string  $data       The data to write
      * @return  integer             The number of bytes written
      */
-    function write($data);
+    public function write($data);
 
     /**
      * Returns the current pointer position
      *
      * @return integer
      */
-    function getPosition();
+    public function getPosition();
 
     /**
      * Sets the pointer position
@@ -90,24 +87,24 @@ interface FileBuffer
      * @param   integer     $whence     The reference from where to measure $position (SEEK_SET, SEEK_CUR or SEEK_END)
      * @return  boolean                 True if the position could be set
      */
-    function setPosition($position, $whence);
+    public function setPosition($position, $whence);
 
     /**
      * Returns the stat information for the buffer
      *
      * @return array
      */
-    function getStat();
+    public function getStat();
 
     /**
      * Flushes the buffer to the storage media
      *
      * @return  boolean
      */
-    function flush();
+    public function flush();
 
     /**
      * Closes the buffer
      */
-    function close();
+    public function close();
 }

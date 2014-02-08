@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,11 @@
  * Git Stream Wrapper for PHP
  *
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Cli
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 
-/**
- * @namespace
- */
 namespace TQ\Vcs\Cli;
 
 /**
@@ -40,9 +37,9 @@ namespace TQ\Vcs\Cli;
  *
  * @author     Stefan Gehrig <gehrigteqneers.de>
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Cli
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 abstract class Binary
 {

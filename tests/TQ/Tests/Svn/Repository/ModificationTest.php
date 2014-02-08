@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@ namespace TQ\Tests\Svn\Repository;
 use TQ\Svn\Cli\Binary;
 use TQ\Svn\Repository\Repository;
 use TQ\Tests\Helper;
+use TQ\Vcs\Repository\Transaction;
 
 class ModificationTest extends \PHPUnit_Framework_TestCase
 {
@@ -198,7 +199,130 @@ class ModificationTest extends \PHPUnit_Framework_TestCase
         $this->assertFileExists(TESTS_REPO_PATH_1.'/test.txt');
 
         $commit = $c->showCommit($revision);
-        $this->assertContains('A /test.txt (from /file_0.txt', $commit);
+        $this->assertContains('A /test.txt', $commit);
+        $this->assertContains('/file_0.txt', $commit);
+    }
+
+    public function testReset()
+    {
+        $c  = $this->getRepository();
+        $this->assertFalse($c->isDirty());
+
+        $file   = TESTS_REPO_PATH_1.'/test.txt';
+        file_put_contents($file, 'Test');
+        $this->assertTrue($c->isDirty());
+        $c->reset();
+        $this->assertFalse($c->isDirty());
+        $this->assertFileNotExists($file);
+
+        file_put_contents($file, 'Test');
+        $c->add(array('test.txt'));
+        $c->reset();
+        $this->assertFalse($c->isDirty());
+        $this->assertFileNotExists($file);
+    }
+
+    public function testTransactionalChangesNoException()
+    {
+        $c  = $this->getRepository();
+
+        $result = $c->transactional(function(Transaction $t) {
+            for ($i = 0; $i < 5; $i++) {
+                $file   = $t->getRepositoryPath().'/'.sprintf('test_%s.txt', $i);
+                file_put_contents($file, 'Test');
+            }
+            $t->setCommitMsg('Hello World');
+            return 'This is the return value';
+        });
+
+        $this->assertEquals('This is the return value', $result->getResult());
+
+        $this->assertFalse($c->isDirty());
+
+        $list   = $c->listDirectory();
+        $this->assertContains('file_0.txt', $list);
+        $this->assertContains('file_1.txt', $list);
+        $this->assertContains('file_2.txt', $list);
+        $this->assertContains('file_3.txt', $list);
+        $this->assertContains('file_4.txt', $list);
+        $this->assertContains('test_0.txt', $list);
+        $this->assertContains('test_1.txt', $list);
+        $this->assertContains('test_2.txt', $list);
+        $this->assertContains('test_3.txt', $list);
+        $this->assertContains('test_4.txt', $list);
+
+        $commit = $c->showCommit($result->getCommitHash());
+        $this->assertContains($result->getCommitMsg(), $commit);
+        $this->assertContains('A /test_0.txt', $commit);
+        $this->assertContains('A /test_1.txt', $commit);
+        $this->assertContains('A /test_2.txt', $commit);
+        $this->assertContains('A /test_3.txt', $commit);
+        $this->assertContains('A /test_4.txt', $commit);
+    }
+
+    public function testTransactionalChangesException()
+    {
+        $c  = $this->getRepository();
+
+
+        try {
+            $c->transactional(function(Transaction $t) {
+                for ($i = 0; $i < 5; $i++) {
+                    $file   = $t->getRepositoryPath().'/'.sprintf('test_%s.txt', $i);
+                    file_put_contents($file, 'Test');
+                }
+                throw new \Exception('Test');
+            });
+            $this->fail('Exception not thrown');
+        } catch (\Exception $e) {
+            $this->assertEquals('Test', $e->getMessage());
+            $this->assertFalse($c->isDirty());
+        }
+    }
+
+    public function testTransactionalChangesRenameAndDelete()
+    {
+        $c  = $this->getRepository();
+
+        $result = $c->transactional(function(Transaction $t) {
+            unlink($t->resolvePath('file_0.txt'));
+            rename($t->resolvePath('file_1.txt'), $t->resolvePath('test.txt'));
+            $t->setCommitMsg('Hello World');
+            return 'This is the return value';
+        });
+
+        $this->assertEquals('This is the return value', $result->getResult());
+
+        $this->assertFalse($c->isDirty());
+
+        $list   = $c->listDirectory();
+        $this->assertNotContains('file_0.txt', $list);
+        $this->assertNotContains('file_1.txt', $list);
+        $this->assertContains('test.txt', $list);
+        $this->assertContains('file_2.txt', $list);
+        $this->assertContains('file_3.txt', $list);
+        $this->assertContains('file_4.txt', $list);
+
+        $commit = $c->showCommit($result->getCommitHash());
+        $this->assertContains($result->getCommitMsg(), $commit);
+        $this->assertContains('D /file_0.txt', $commit);
+        $this->assertContains('D /file_1.txt', $commit);
+        $this->assertContains('A /test.txt', $commit);
+    }
+
+    public function testTransactionalNoChanges()
+    {
+        $c              = $this->getRepository();
+        $currentCommit  = $c->getCurrentCommit();
+
+        $result = $c->transactional(function(Transaction $t) {
+            $t->setCommitMsg('Hello World');
+            return 'This is the return value';
+        });
+
+        $this->assertEquals('This is the return value', $result->getResult());
+        $this->assertEquals($currentCommit, $result->getCommitHash());
+        $this->assertEquals($currentCommit, $c->getCurrentCommit());
     }
 }
 

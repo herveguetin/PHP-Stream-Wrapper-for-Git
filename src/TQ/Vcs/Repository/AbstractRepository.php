@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,28 +25,24 @@
  * Git Stream Wrapper for PHP
  *
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Repository
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 
-/**
- * @namespace
- */
 namespace TQ\Vcs\Repository;
 use TQ\Vcs\FileSystem;
 
 /**
- * Base class for Vcs repositories
+ * Base class for VCS repositories
  *
- * @uses       TQ\Git\Cli\Binary
  * @author     Stefan Gehrig <gehrigteqneers.de>
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Repository
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
-abstract class AbstractRepository implements Repository
+abstract class AbstractRepository implements RepositoryInterface
 {
     /**
      * The repository path
@@ -110,7 +106,7 @@ abstract class AbstractRepository implements Repository
      * Sets the mode used to create files when requested
      *
      * @param   integer     $fileCreationMode   The mode, e.g. 644
-     * @return  Repository
+     * @return  RepositoryInterface
      */
     public function setFileCreationMode($fileCreationMode)
     {
@@ -132,7 +128,7 @@ abstract class AbstractRepository implements Repository
      * Sets the mode used to create directories when requested
      *
      * @param   integer     $directoryCreationMode   The mode, e.g. 755
-     * @return  Repository
+     * @return  RepositoryInterface
      */
     public function setDirectoryCreationMode($directoryCreationMode)
     {
@@ -154,7 +150,7 @@ abstract class AbstractRepository implements Repository
      * Sets the author used when committing changes
      *
      * @param   string     $author      The author used when committing changes
-     * @return  Repository
+     * @return  RepositoryInterface
      */
     public function setAuthor($author)
     {

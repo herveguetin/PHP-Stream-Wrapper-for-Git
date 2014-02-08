@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,45 +25,45 @@
  * Git Stream Wrapper for PHP
  *
  * @category   TQ
- * @package    TQ_Git
- * @subpackage StreamWrapper
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 
-/**
- * @namespace
- */
-namespace TQ\Git\StreamWrapper\FileBuffer\Factory;
-use TQ\Vcs\Buffer\FileBuffer;
-use TQ\Git\StreamWrapper\PathInformation;
+namespace TQ\Vcs\StreamWrapper;
 
 /**
- * Interface to which file stream factories must adhere
+ * Creates path information for a given stream URL
  *
  * @author     Stefan Gehrig <gehrigteqneers.de>
  * @category   TQ
- * @package    TQ_Git
- * @subpackage StreamWrapper
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage VCS
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
-interface Factory
+interface PathFactoryInterface
 {
     /**
-     * Returns true if this factory can handle the requested path
+     * Returns the repository registry
      *
-     * @param   PathInformation     $path   The path information
-     * @param   string              $mode   The mode used to open the file
-     * @return  boolean                     True if this factory can handle the path
+     * @return  RepositoryRegistry
      */
-    function canHandle(PathInformation $path, $mode);
+    public function getRegistry();
 
     /**
-     * Returns the file stream to handle the requested path
+     * Returns the path information for a given stream URL
      *
-     * @param   PathInformation     $path   The path information
-     * @param   string              $mode   The mode used to open the path
-     * @return  FileBuffer                  The file buffer to handle the path
+     * @param   string  $streamUrl              The URL given to the stream function
+     * @return  PathInformationInterface        The path information representing the stream URL
      */
-    function createFileBuffer(PathInformation $path, $mode);
+    public function createPathInformation($streamUrl);
 
+    /**
+     * Returns path information for a given stream path
+     *
+     * @param   string      $streamUrl      The URL given to the stream function
+     * @return  array                       An array containing information about the path
+     * @throws \InvalidArgumentException    If the URL is invalid
+     */
+    public function parsePath($streamUrl);
 }

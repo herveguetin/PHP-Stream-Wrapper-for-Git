@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -50,9 +50,10 @@ class Helper
         }
 
         $dirIt  = new \RecursiveDirectoryIterator($path,
-              \RecursiveDirectoryIterator::SKIP_DOTS
-            | \RecursiveDirectoryIterator::KEY_AS_PATHNAME
-            | \RecursiveDirectoryIterator::CURRENT_AS_FILEINFO
+              \FilesystemIterator::SKIP_DOTS
+            | \FilesystemIterator::KEY_AS_PATHNAME
+            | \FilesystemIterator::CURRENT_AS_FILEINFO
+            | \FilesystemIterator::UNIX_PATHS
         );
         $it = new \RecursiveIteratorIterator($dirIt,
             \RecursiveIteratorIterator::CHILD_FIRST

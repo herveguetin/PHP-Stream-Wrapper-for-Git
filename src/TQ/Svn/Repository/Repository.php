@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,11 @@
  * Git Stream Wrapper for PHP
  *
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Repository
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage SVN
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 
-/**
- * @namespace
- */
 namespace TQ\Svn\Repository;
 use TQ\Vcs\FileSystem;
 use TQ\Vcs\Repository\AbstractRepository;
@@ -40,14 +37,14 @@ use TQ\Svn\Cli\Binary;
 use TQ\Vcs\Cli\CallResult;
 
 /**
- * Provides access to a Git repository
+ * Provides access to a SVN repository
  *
- * @uses       TQ\Git\Cli\Binary
+ * @uses       TQ\Svn\Cli\Binary
  * @author     Stefan Gehrig <gehrigteqneers.de>
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Repository
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage SVN
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 class Repository extends AbstractRepository
 {
@@ -77,7 +74,7 @@ class Repository extends AbstractRepository
             ));
         }
 
-        $repositoryRoot = self::findRepositoryRoot($repositoryPath);
+        $repositoryRoot = self::findRepositoryRoot($svn, $repositoryPath);
 
         if ($repositoryRoot === null) {
             throw new \InvalidArgumentException(sprintf(
@@ -91,15 +88,26 @@ class Repository extends AbstractRepository
     /**
      * Tries to find the root directory for a given repository path
      *
+     * @param   Binary      $svn        The SVN binary
      * @param   string      $path       The file system path
      * @return  string|null             NULL if the root cannot be found, the root path otherwise
      */
-    public static function findRepositoryRoot($path)
+    public static function findRepositoryRoot(Binary $svn, $path)
     {
-        return FileSystem::bubble($path, function($p) {
-            $gitDir = $p.'/'.'.svn';
-            return file_exists($gitDir) && is_dir($gitDir);
-        });
+        $hasSvnDir  = function($path) {
+            $svnDir = $path.'/'.'.svn';
+            return file_exists($svnDir) && is_dir($svnDir);
+        };
+
+        $pathWithSvnDir = FileSystem::bubble($path, $hasSvnDir);
+
+        $root       = $pathWithSvnDir;
+        $parentDir  = dirname($pathWithSvnDir);
+        while ($hasSvnDir($parentDir) && strlen($root) > 1) {
+            $root      = dirname($root);
+            $parentDir = dirname($parentDir);
+        }
+        return $root;
     }
 
     /**
@@ -128,25 +136,25 @@ class Repository extends AbstractRepository
      * Returns the current commit hash
      *
      * @return  string
+     * @throws  \RuntimeException
      */
     public function getCurrentCommit()
     {
         /** @var $result CallResult */
-        $result = $this->getSvn()->{'update'}($this->getRepositoryPath(), array());
-        $result->assertSuccess(sprintf('Cannot update "%s"', $this->getRepositoryPath()));
-
-        /** @var $result CallResult */
-        $result = $this->getSvn()->{'info'}($this->getRepositoryPath(), array('--xml'));
+        $result = $this->getSvn()->{'info'}($this->getRepositoryPath(), array(
+            '--xml',
+            '--revision' => 'HEAD'
+        ));
         $result->assertSuccess(sprintf('Cannot get info for "%s"', $this->getRepositoryPath()));
 
         $xml    = simplexml_load_string($result->getStdOut());
         if (!$xml) {
-            $result->assertSuccess(sprintf('Cannot read info XML for "%s"', $this->getRepositoryPath()));
+            throw new \RuntimeException(sprintf('Cannot read info XML for "%s"', $this->getRepositoryPath()));
         }
 
         $commit = $xml->xpath('/info/entry/commit[@revision]');
         if (empty($commit)) {
-            $result->assertSuccess(sprintf('Cannot read info XML for "%s"', $this->getRepositoryPath()));
+            throw new \RuntimeException(sprintf('Cannot read info XML for "%s"', $this->getRepositoryPath()));
         }
 
         $commit = reset($commit);
@@ -182,9 +190,26 @@ class Repository extends AbstractRepository
 
     /**
      * Resets the working directory and/or the staging area and discards all changes
+     *
+     * @throws  \RuntimeException
      */
     public function reset()
     {
+        /** @var $result CallResult */
+        $result = $this->getSvn()->{'revert'}($this->getRepositoryPath(), array(
+            '--recursive',
+            '--',
+            '.'
+        ));
+        $result->assertSuccess(sprintf('Cannot reset "%s"', $this->getRepositoryPath()));
+
+        $status = $this->getStatus();
+        foreach ($status as $item) {
+            $file   = $this->resolveFullPath($item['file']);
+            if (@unlink($file) !== true || $item['status'] !== 'unversioned') {
+                throw new \RuntimeException('Cannot delete file "'.$item['file'].'"');
+            }
+        }
     }
 
     /**
@@ -200,13 +225,48 @@ class Repository extends AbstractRepository
             $args[]  = '--force';
         }
         if ($file !== null) {
+            $status = $this->getStatus();
+            if (empty($status)) {
+                return;
+            }
+
+            $files  = $this->resolveLocalGlobPath($file);
+            foreach ($this->getStatus() as $status) {
+                if (   $status['status'] != 'unversioned'
+                    && in_array($status['file'], $files)
+                ) {
+                    array_splice($files, array_search($status['file'], $files), 1);
+                }
+            }
+
+            if (empty($files)) {
+                return;
+            }
+
             $args[] = '--parents';
             $args[] = '--';
-            $args   = array_merge($args, $this->resolveLocalGlobPath($file));
+            $args   = array_merge($args, $files);
         } else {
-            $args['--depth'] = 'infinity';
-            $args[] = '--';
-            $args[] = '*';
+            $toAdd      = array();
+            $toRemove   = array();
+            foreach ($this->getStatus() as $status) {
+                if ($status['status'] == 'missing') {
+                    $toRemove[] = $this->resolveLocalPath($status['file']);
+                } else if ($status['status'] == 'unversioned') {
+                    $toAdd[] = $this->resolveLocalPath($status['file']);
+                }
+            }
+
+            if (!empty($toRemove)) {
+                $this->remove($toRemove, false, $force);
+            }
+            if (empty($toAdd)) {
+                return;
+            }
+
+            $args['--depth']    = 'infinity';
+            $args[]             = '--';
+            $args               = array_merge($args, $toAdd);
         }
 
         /** @var $result CallResult */
@@ -221,7 +281,7 @@ class Repository extends AbstractRepository
      *
      * @param   array   $file           The file(s) to be removed
      * @param   boolean $recursive      True to recursively remove subdirectories
-     * @param   boolean $force          True to continue even though Git reports a possible conflict
+     * @param   boolean $force          True to continue even though SVN reports a possible conflict
      */
     public function remove(array $file, $recursive = false, $force = false)
     {
@@ -244,7 +304,7 @@ class Repository extends AbstractRepository
      *
      * @param   string  $fromPath   The source path
      * @param   string  $toPath     The destination path
-     * @param   boolean $force      True to continue even though Git reports a possible conflict
+     * @param   boolean $force      True to continue even though SVN reports a possible conflict
      */
     public function move($fromPath, $toPath, $force = false)
     {
@@ -311,12 +371,42 @@ class Repository extends AbstractRepository
     }
 
     /**
+     * Writes data to a file and commit the changes immediately
+     *
+     * @param   string          $path           The directory path
+     * @param   string|null     $commitMsg      The commit message used when committing the changes
+     * @param   integer|null    $dirMode        The mode for creating the intermediate directories
+     * @param   boolean         $recursive      Create intermediate directories recursively if required
+     * @param   string|null     $author         The author
+     * @return  string                          The current commit hash
+     * @throws  \RuntimeException               If the directory could not be created
+     */
+    public function createDirectory($path, $commitMsg = null, $dirMode = null, $recursive = true, $author = null) {
+        $directory  = $this->resolveFullPath($path);
+        $dirMode    = $dirMode ?: $this->getDirectoryCreationMode();
+
+        if (file_exists($directory) || !mkdir($directory, (int)$dirMode, $recursive)) {
+            throw new \RuntimeException(sprintf('Cannot create "%s"', $directory));
+        }
+
+        $this->add(array($this->resolveLocalPath($directory)));
+
+        if ($commitMsg === null) {
+            $commitMsg  = sprintf('%s created directory "%s"', __CLASS__, $path);
+        }
+
+        $this->commit($commitMsg, null, $author);
+
+        return $this->getCurrentCommit();
+    }
+
+    /**
      * Removes a file and commit the changes immediately
      *
      * @param   string          $path           The file path
      * @param   string|null     $commitMsg      The commit message used when committing the changes
      * @param   boolean         $recursive      True to recursively remove subdirectories
-     * @param   boolean         $force          True to continue even though Git reports a possible conflict
+     * @param   boolean         $force          True to continue even though SVN reports a possible conflict
      * @param   string|null     $author         The author
      * @return  string                          The current commit hash
      */
@@ -339,7 +429,7 @@ class Repository extends AbstractRepository
      * @param   string          $fromPath       The source path
      * @param   string          $toPath         The destination path
      * @param   string|null     $commitMsg      The commit message used when committing the changes
-     * @param   boolean         $force          True to continue even though Git reports a possible conflict
+     * @param   boolean         $force          True to continue even though SVN reports a possible conflict
      * @param   string|null     $author         The author
      * @return  string                          The current commit hash
      */
@@ -361,11 +451,48 @@ class Repository extends AbstractRepository
      *
      * @param   integer|null    $limit      The maximum number of log entries returned
      * @param   integer|null    $skip       Number of log entries that are skipped from the beginning
-     * @return  string
+     * @return  array
+     * @throws  \RuntimeException
      */
     public function getLog($limit = null, $skip = null)
     {
+        $arguments  = array(
+            '--xml',
+            '--revision'    => 'HEAD:0'
+        );
 
+
+        $skip   = ($skip === null) ? 0 : (int)$skip;
+        if ($limit !== null) {
+            $arguments['--limit']    = (int)($limit + $skip);
+        }
+
+        /** @var $result CallResult */
+        $result = $this->getSvn()->{'log'}($this->getRepositoryPath(), $arguments);
+        $result->assertSuccess(sprintf('Cannot retrieve log from "%s"',
+            $this->getRepositoryPath()
+        ));
+
+        $xml    = simplexml_load_string($result->getStdOut());
+        if (!$xml) {
+            throw new \RuntimeException(sprintf('Cannot read log XML for "%s"', $this->getRepositoryPath()));
+        }
+        $logEntries = new \ArrayIterator($xml->xpath('/log/logentry'));
+
+        if ($limit !== null) {
+            $logEntries = new \LimitIterator($logEntries, $skip, $limit);
+        }
+
+        $log = array();
+        foreach ($logEntries as $item) {
+            $log[]   = array(
+                (string)$item['revision'],
+                (string)$item->author,
+                (string)$item->date,
+                (string)$item->msg
+            );
+        }
+        return $log;
     }
 
     /**
@@ -397,7 +524,16 @@ class Repository extends AbstractRepository
      */
     public function showFile($file, $ref = 'HEAD')
     {
+        /** @var $result CallResult */
+        $result = $this->getSvn()->{'cat'}($this->getRepositoryPath(), array(
+            '--revision'    => $ref,
+            $file
+        ));
+        $result->assertSuccess(sprintf('Cannot show "%s" at "%s" from "%s"',
+            $file, $ref, $this->getRepositoryPath()
+        ));
 
+        return $result->getStdOut();
     }
 
     /**
@@ -413,10 +549,48 @@ class Repository extends AbstractRepository
      * @param   string  $path       The path to the object
      * @param   string  $ref        The version ref
      * @return  array               The object info
+     * @throws  \RuntimeException
      */
     public function getObjectInfo($path, $ref = 'HEAD')
     {
+        /** @var $result CallResult */
+        $result = $this->getSvn()->{'info'}($this->getRepositoryPath(), array(
+            '--xml',
+            '--revision' => $ref,
+            $this->resolveLocalPath($path)
+        ));
+        $result->assertSuccess(sprintf('Cannot get info for "%s" at "%s" from "%s"',
+            $path, $ref, $this->getRepositoryPath()
+        ));
 
+        $xml    = simplexml_load_string($result->getStdOut());
+        if (!$xml) {
+            throw new \RuntimeException(sprintf('Cannot read info XML for "%s" at "%s" from "%s"',
+                $path, $ref, $this->getRepositoryPath()
+            ));
+        }
+
+        $entry = $xml->xpath('/info/entry');
+        if (count($entry) !== 1) {
+            throw new \RuntimeException(sprintf('Cannot read info XML for "%s" at "%s" from "%s"',
+                $path, $ref, $this->getRepositoryPath()
+            ));
+        }
+        $entry  = reset($entry);
+        $mode   = 0;
+        switch ((string)$entry['kind']) {
+            case 'dir':
+                $mode   |= 0040000;
+                break;
+            case 'file':
+                $mode   |= 0100000;
+                break;
+        }
+        return array(
+            'type'  => (string)$entry['kind'],
+            'mode'  => (int)$mode,
+            'size'  => 0
+        );
     }
 
     /**
@@ -425,28 +599,74 @@ class Repository extends AbstractRepository
      * @param   string  $directory      The path ot the directory
      * @param   string  $ref            The version ref
      * @return  array
+     * @throws  \RuntimeException
      */
     public function listDirectory($directory = '.', $ref = 'HEAD')
     {
+        $directory  = FileSystem::normalizeDirectorySeparator($directory);
+        $directory  = rtrim($directory, '/').'/';
 
+        $args   = array(
+            '--xml',
+            '--revision' => $ref,
+            $this->resolveLocalPath($directory)
+        );
+
+        /** @var $result CallResult */
+        $result = $this->getSvn()->{'list'}($this->getRepositoryPath(), $args);
+        $result->assertSuccess(sprintf('Cannot list directory "%s" at "%s" from "%s"',
+            $directory, $ref, $this->getRepositoryPath()
+        ));
+
+        $xml    = simplexml_load_string($result->getStdOut());
+        if (!$xml) {
+            throw new \RuntimeException(sprintf('Cannot read list XML for "%s" at "%s" from "%s"',
+                $directory, $ref, $this->getRepositoryPath()
+            ));
+        }
+
+        $list = array();
+        foreach ($xml->xpath('/lists/list/entry') as $item) {
+            $list[]   = (string)$item->name;
+        }
+        return $list;
     }
 
     /**
-     * Returns the current status of the working directory and the staging area
+     * Returns the current status of the working directory
      *
      * The returned array structure is
      *      array(
      *          'file'      => '...',
-     *          'x'         => '.',
-     *          'y'         => '.',
-     *          'renamed'   => null/'...'
+     *          'status'    => '...'
      *      )
      *
      * @return  array
+     * @throws  \RuntimeException
      */
     public function getStatus()
     {
+        /** @var $result CallResult */
+        $result = $this->getSvn()->{'status'}($this->getRepositoryPath(), array(
+            '--xml'
+        ));
+        $result->assertSuccess(
+            sprintf('Cannot retrieve status from "%s"', $this->getRepositoryPath())
+        );
 
+        $xml    = simplexml_load_string($result->getStdOut());
+        if (!$xml) {
+            throw new \RuntimeException(sprintf('Cannot read status XML for "%s"', $this->getRepositoryPath()));
+        }
+
+        $status = array();
+        foreach ($xml->xpath('/status/target/entry') as $entry) {
+            $status[]   = array(
+                'file'      => (string)$entry['path'],
+                'status'    => (string)$entry->{'wc-status'}['item']
+            );
+        }
+        return $status;
     }
 
     /**
@@ -471,7 +691,15 @@ class Repository extends AbstractRepository
         $absoluteFiles  = $this->resolveFullPath($files);
         $expandedFiles  = array();
         foreach ($absoluteFiles as $absoluteFile) {
-            $expandedFiles  = array_merge($expandedFiles, glob($absoluteFile));
+            $globResult     = glob($absoluteFile);
+            if (   empty($globResult)
+                && stripos($absoluteFile, '*') === false
+                && !file_exists($absoluteFile)
+            ) {
+                $expandedFiles[]    = $absoluteFile;
+            } else {
+                $expandedFiles  = array_merge($expandedFiles, $globResult);
+            }
         }
         return $this->resolveLocalPath($expandedFiles);
     }

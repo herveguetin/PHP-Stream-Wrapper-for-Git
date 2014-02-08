@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * Copyright (C) 2014 by TEQneers GmbH & Co. KG
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,11 @@
  * Git Stream Wrapper for PHP
  *
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Repository
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage Git
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 
-/**
- * @namespace
- */
 namespace TQ\Git\Repository;
 use TQ\Vcs\FileSystem;
 use TQ\Vcs\Repository\AbstractRepository;
@@ -45,9 +42,9 @@ use TQ\Vcs\Cli\CallResult;
  * @uses       TQ\Git\Cli\Binary
  * @author     Stefan Gehrig <gehrigteqneers.de>
  * @category   TQ
- * @package    TQ_Git
- * @subpackage Repository
- * @copyright  Copyright (C) 2011 by TEQneers GmbH & Co. KG
+ * @package    TQ_VCS
+ * @subpackage Git
+ * @copyright  Copyright (C) 2014 by TEQneers GmbH & Co. KG
  */
 class Repository extends AbstractRepository
 {
@@ -120,7 +117,7 @@ class Repository extends AbstractRepository
     }
 
     /**
-     * Inits a path to be used as a Git repository
+     * Initializes a path to be used as a Git repository
      *
      * @param   Binary   $git           The Git binary
      * @param   string   $path          The repository path
@@ -201,11 +198,11 @@ class Repository extends AbstractRepository
         if ($author !== null) {
             $args['--author']  = $author;
         }
-        if (count($extraArgs)) {
-           foreach($extraArgs as $value) {
-               $arts[] = $value;
-           }
+
+        foreach($extraArgs as $value) {
+           $args[] = $value;
         }
+
         if ($file !== null) {
             $args[] = '--';
             $args   = array_merge($args, $this->resolveLocalPath($file));
@@ -365,6 +362,25 @@ class Repository extends AbstractRepository
     }
 
     /**
+     * Writes data to a file and commit the changes immediately
+     *
+     * @param   string          $path           The directory path
+     * @param   string|null     $commitMsg      The commit message used when committing the changes
+     * @param   integer|null    $dirMode        The mode for creating the intermediate directories
+     * @param   boolean         $recursive      Create intermediate directories recursively if required
+     * @param   string|null     $author         The author
+     * @return  string                          The current commit hash
+     * @throws  \RuntimeException               If the directory could not be created
+     */
+    public function createDirectory($path, $commitMsg = null, $dirMode = null, $recursive = true, $author = null)
+    {
+        if ($commitMsg === null) {
+            $commitMsg  = sprintf('%s created directory "%s"', __CLASS__, $path);
+        }
+        return $this->writeFile($path.'/.gitkeep', '', $commitMsg, 0666, $dirMode, $recursive, $author);
+    }
+
+    /**
      * Removes a file and commit the changes immediately
      *
      * @param   string          $path           The file path
@@ -415,7 +431,7 @@ class Repository extends AbstractRepository
      *
      * @param   integer|null    $limit      The maximum number of log entries returned
      * @param   integer|null    $skip       Number of log entries that are skipped from the beginning
-     * @return  string
+     * @return  array
      */
     public function getLog($limit = null, $skip = null)
     {
@@ -708,4 +724,3 @@ class Repository extends AbstractRepository
         return $retVar;
     }
 }
-
