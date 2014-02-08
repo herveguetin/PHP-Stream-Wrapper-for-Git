@@ -679,7 +679,7 @@ class Repository extends AbstractRepository
             if (strpos($line, '* ') === 0) {
                 $line   = substr($line, 2);
             }
-            return $line;
+            return trim($line);
         }, explode("\n", $output));
         return $branches;
     }
